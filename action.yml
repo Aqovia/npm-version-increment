@@ -24,6 +24,9 @@ runs:
     - id: npm-version-increment
       shell: bash
       run: |
+          # Get the current branch name
+          BRANCH=$(git branch --show-current)
+          echo "Current branch is - $BRANCH"
           # Check if it's the master branch or not
           if [ "$BRANCH" == "master" ] || [ "$BRANCH" == "main" ]; then
             # For the master branch, bump a minor version
