@@ -1,0 +1,58 @@
+name: 'NPM Version Incrementer'
+description: 'Increments the version of an NPM package based on the branch.'
+outputs:
+  change-type:
+    description: 'The version bump type, minor or patch.'
+    value: ${{ steps.npm-version-increment.outputs.change-type }}
+  current-version:
+    description: 'The current version of the package.'
+    value: ${{ steps.get-current-version.outputs.current-version }}
+  new-version:
+    description: 'The new version of the package.'
+    value: ${{ steps.get-new-version.outputs.new-version }}
+runs:
+  using: "composite"
+  steps:
+    - id: get-current-version
+      shell: bash
+      run: |
+          # Get the current version number
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "Current version is - $CURRENT_VERSION"
+          echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+    - id: npm-version-increment
+      shell: bash
+      run: |
+          # Get the current branch name
+          BRANCH=$(git branch --show-current)
+          echo "Current branch is - $BRANCH"
+          # Check if it's the master branch or not
+          if [ "$BRANCH" == "master" ] || [ "$BRANCH" == "main" ]; then
+            # For the master branch, bump a minor version
+            echo "Bumping minor version"
+            npm version minor
+            echo "change-type=minor" >> $GITHUB_OUTPUT
+          else
+            # For non-master branches, create a pre-release version
+            echo "Bumping patch version"
+            npm version patch
+            echo "change-type=patch" >> $GITHUB_OUTPUT
+          fi
+
+    - id: get-new-version
+      shell: bash
+      run: |
+          # Checking change type
+          CHANGE_TYPE=${{ steps.npm-version-increment.outputs.change-type }}
+          echo "Change type is - $CHANGE_TYPE"
+          # Get the updated version number
+          NEW_VERSION=$(jq -r '.version' package.json)
+          echo "New version is - $NEW_VERSION"
+          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+    - id: git-commit
+      shell: bash
+      run: |
+          # Push the new tag to GitHub
+          git push --follow-tags origin $BRANCH
